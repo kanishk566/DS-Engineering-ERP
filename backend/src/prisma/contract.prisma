@@ -1,0 +1,781 @@
+// use prisma-next
+
+// ============================================================
+// DS ENGINEERING ERP - DATABASE CONTRACT
+// ============================================================
+
+
+// =========================
+// ENUMS
+// =========================
+
+enum UserRole {
+  @@type("pg/text@1")
+
+  ADMIN       = "admin"
+  MANAGER     = "manager"
+  EMPLOYEE    = "employee"
+  ACCOUNTS    = "accounts"
+  PURCHASE    = "purchase"
+  SALES       = "sales"
+  VIEWER      = "viewer"
+}
+
+enum EmployeeStatus {
+  @@type("pg/text@1")
+
+  ACTIVE      = "active"
+  INACTIVE    = "inactive"
+  ON_LEAVE    = "on_leave"
+}
+
+enum ProjectStatus {
+  @@type("pg/text@1")
+
+  PLANNING    = "planning"
+  IN_PROGRESS = "in_progress"
+  ON_HOLD     = "on_hold"
+  COMPLETED   = "completed"
+  CANCELLED   = "cancelled"
+}
+
+enum TaskStatus {
+  @@type("pg/text@1")
+
+  TODO        = "todo"
+  IN_PROGRESS = "in_progress"
+  COMPLETED   = "completed"
+  BLOCKED     = "blocked"
+}
+
+enum DrawingStatus {
+  @@type("pg/text@1")
+
+  DRAFT        = "draft"
+  UNDER_REVIEW = "under_review"
+  APPROVED     = "approved"
+  REJECTED     = "rejected"
+  SUPERSEDED   = "superseded"
+}
+
+enum DrawingFileType {
+  @@type("pg/text@1")
+
+  PDF   = "pdf"
+  IMAGE = "image"
+  DWG   = "dwg"
+  DXF   = "dxf"
+  OTHER = "other"
+}
+
+enum PurchaseOrderStatus {
+  @@type("pg/text@1")
+
+  DRAFT     = "draft"
+  SENT      = "sent"
+  PARTIAL   = "partial"
+  RECEIVED  = "received"
+  CANCELLED = "cancelled"
+}
+
+enum QuotationStatus {
+  @@type("pg/text@1")
+
+  DRAFT    = "draft"
+  SENT     = "sent"
+  ACCEPTED = "accepted"
+  REJECTED = "rejected"
+  EXPIRED  = "expired"
+}
+
+enum SalesOrderStatus {
+  @@type("pg/text@1")
+
+  DRAFT      = "draft"
+  CONFIRMED  = "confirmed"
+  PROCESSING = "processing"
+  PENDING    = "pending"
+  DELIVERED  = "delivered"
+  CANCELLED  = "cancelled"
+}
+
+enum InvoiceStatus {
+  @@type("pg/text@1")
+
+  DRAFT     = "draft"
+  SENT      = "sent"
+  PARTIAL   = "partial"
+  PAID      = "paid"
+  OVERDUE   = "overdue"
+  CANCELLED = "cancelled"
+}
+
+
+// =========================
+// PAYMENT METHOD
+// =========================
+
+enum PaymentMethod {
+  @@type("pg/text@1")
+
+  CASH          = "cash"
+  BANK_TRANSFER  = "bank_transfer"
+  CHEQUE        = "cheque"
+  UPI           = "upi"
+  CARD          = "card"
+  OTHER         = "other"
+}
+
+
+// =========================
+// USER / AUTHENTICATION
+// =========================
+
+model User {
+  id            Int       @id @default(autoincrement())
+  email         String    @unique
+  passwordHash  String
+  name          String
+  role          UserRole  @default(EMPLOYEE)
+  isActive      Boolean   @default(true)
+
+  employee      Employee?
+
+  createdAt     DateTime  @default(now())
+  updatedAt     temporal.updatedAt()
+
+  @@index([role])
+}
+
+
+// =========================
+// EMPLOYEE
+// =========================
+
+model Employee {
+  id               Int             @id @default(autoincrement())
+  employeeCode     String          @unique
+  firstName        String
+  lastName         String?
+  phone            String?
+  email            String?
+  designation      String?
+  department       String?
+  joiningDate      DateTime?
+  status           EmployeeStatus  @default(ACTIVE)
+
+  userId           Int?            @unique
+  user             User?           @relation(fields: [userId], references: [id])
+
+  projectMembers   ProjectMember[]
+  assignedTasks    ProjectTask[]
+  uploadedDrawings Drawing[] @relation("DrawingUploadedBy")
+  drawingRevisions DrawingRevision[]
+
+  reviewedDrawings Drawing[] @relation("DrawingReviewedBy")
+  approvedDrawings Drawing[] @relation("DrawingApprovedBy")
+
+  createdAt        DateTime        @default(now())
+  updatedAt        temporal.updatedAt()
+
+  @@index([status])
+  @@index([department])
+}
+
+
+// =========================
+// CUSTOMER
+// =========================
+
+model Customer {
+  id            Int        @id @default(autoincrement())
+  customerCode  String     @unique
+  name          String
+  contactPerson String?
+  email         String?
+  phone         String?
+  address       String?
+  gstNumber     String?
+
+  projects      Project[]
+  quotations    Quotation[]
+  salesOrders   SalesOrder[]
+  invoices      Invoice[]
+
+  createdAt     DateTime   @default(now())
+  updatedAt     temporal.updatedAt()
+
+  @@index([name])
+}
+
+
+// =========================
+// PROJECT
+// =========================
+
+model Project {
+  id              Int             @id @default(autoincrement())
+  projectCode     String          @unique
+  name            String
+  description     String?
+
+  customerId      Int?
+  customer        Customer?       @relation(fields: [customerId], references: [id])
+
+  startDate       DateTime?
+  expectedEndDate DateTime?
+  actualEndDate   DateTime?
+
+  status          ProjectStatus   @default(PLANNING)
+
+  projectMembers  ProjectMember[]
+  tasks           ProjectTask[]
+  drawings        Drawing[]
+  machines        Machine[]
+  purchaseOrders  PurchaseOrder[]
+  quotations      Quotation[]
+  salesOrders     SalesOrder[]
+  invoices        Invoice[]
+
+  createdAt       DateTime        @default(now())
+  updatedAt       temporal.updatedAt()
+
+  @@index([status])
+  @@index([customerId])
+}
+
+
+// =========================
+// PROJECT MEMBERS
+// =========================
+
+model ProjectMember {
+  id          Int       @id @default(autoincrement())
+
+  projectId  Int
+  employeeId Int
+
+  project    Project   @relation(fields: [projectId], references: [id])
+  employee   Employee  @relation(fields: [employeeId], references: [id])
+
+  assignedAt DateTime  @default(now())
+
+  @@unique([projectId, employeeId])
+  @@index([employeeId])
+}
+
+
+// =========================
+// PROJECT TASKS / WORK
+// =========================
+
+model ProjectTask {
+  id              Int         @id @default(autoincrement())
+
+  projectId       Int
+  project         Project     @relation(fields: [projectId], references: [id])
+
+  employeeId      Int?
+  employee        Employee?   @relation(fields: [employeeId], references: [id])
+
+  title           String
+  description     String?
+
+  status          TaskStatus  @default(TODO)
+
+  // 0 to 100
+  progressPercent Int
+
+  // Used to calculate weighted project progress
+  weight          Int
+
+  startDate       DateTime?
+  dueDate         DateTime?
+  completedAt     DateTime?
+
+  createdAt       DateTime    @default(now())
+  updatedAt       temporal.updatedAt()
+
+  @@index([projectId])
+  @@index([employeeId])
+  @@index([status])
+}
+
+
+// =========================
+// DRAWINGS
+// =========================
+
+model Drawing {
+  id              Int           @id @default(autoincrement())
+
+  // Drawing identification
+  drawingNumber   String
+  title           String
+  revision        String        @default("A")
+
+  // Project mapping
+  projectId       Int
+  project         Project       @relation(fields: [projectId], references: [id])
+
+  // Machine / Model mapping
+  machineId       Int?
+  machine         Machine?      @relation(fields: [machineId], references: [id])
+
+  // Upload information
+  uploadedById    Int?
+  uploadedBy      Employee?     @relation("DrawingUploadedBy", fields: [uploadedById], references: [id])
+
+  // File information
+  fileName        String?
+  fileUrl         String?
+  fileType        DrawingFileType?
+  fileSize        Int?
+
+  // Drawing information
+  drawingDate     DateTime?
+  description     String?
+  remarks         String?
+
+  // Security
+  isConfidential  Boolean       @default(false)
+
+  // Approval / workflow
+  status          DrawingStatus @default(DRAFT)
+
+  reviewedById    Int?
+  reviewedBy      Employee?     @relation("DrawingReviewedBy", fields: [reviewedById], references: [id])
+  reviewedAt      DateTime?
+
+  approvedById    Int?
+  approvedBy      Employee?     @relation("DrawingApprovedBy", fields: [approvedById], references: [id])
+  approvedAt      DateTime?
+
+  approvalRemarks String?
+
+  // Revision history
+  revisions       DrawingRevision[]
+
+  createdAt       DateTime      @default(now())
+  updatedAt       temporal.updatedAt()
+
+  @@unique([projectId, drawingNumber, revision])
+  @@index([projectId])
+  @@index([machineId])
+  @@index([uploadedById])
+  @@index([status])
+  @@index([drawingNumber])
+  @@index([drawingDate])
+  @@index([isConfidential])
+}
+
+
+// =========================
+// MACHINE / MODEL MASTER
+// =========================
+
+model Machine {
+  id              Int       @id @default(autoincrement())
+
+  machineCode     String    @unique
+  machineName     String
+  modelNumber     String?
+  serialNumber    String?
+
+  description     String?
+
+  projectId       Int?
+  project         Project?  @relation(fields: [projectId], references: [id])
+
+  drawings        Drawing[]
+
+  isActive        Boolean   @default(true)
+
+  createdAt       DateTime  @default(now())
+  updatedAt       temporal.updatedAt()
+
+  @@index([machineName])
+  @@index([modelNumber])
+  @@index([projectId])
+  @@index([isActive])
+}
+
+
+// =========================
+// DRAWING REVISION HISTORY
+// =========================
+
+model DrawingRevision {
+  id                Int           @id @default(autoincrement())
+
+  drawingId         Int
+  drawing           Drawing       @relation(fields: [drawingId], references: [id])
+
+  revision          String
+
+  fileName          String?
+  fileUrl           String?
+  fileType          DrawingFileType?
+  fileSize          Int?
+
+  changeDescription String?
+
+  uploadedById      Int?
+  uploadedBy        Employee?     @relation(fields: [uploadedById], references: [id])
+
+  revisionDate      DateTime      @default(now())
+
+  createdAt         DateTime      @default(now())
+
+  @@unique([drawingId, revision])
+  @@index([drawingId])
+  @@index([uploadedById])
+  @@index([revisionDate])
+}
+
+
+
+// =========================
+// VENDOR
+// =========================
+
+model Vendor {
+  id             Int           @id @default(autoincrement())
+  vendorCode     String        @unique
+  name           String
+  contactPerson  String?
+  email          String?
+  phone          String?
+  address        String?
+  gstNumber      String?
+
+  purchaseOrders PurchaseOrder[]
+
+  createdAt      DateTime      @default(now())
+  updatedAt      temporal.updatedAt()
+
+  @@index([name])
+}
+
+
+// =========================
+// PURCHASE ORDER
+// =========================
+
+model PurchaseOrder {
+  id            Int                 @id @default(autoincrement())
+  poNumber      String              @unique
+
+  projectId     Int?
+  project       Project?            @relation(fields: [projectId], references: [id])
+
+  vendorId      Int
+  vendor        Vendor              @relation(fields: [vendorId], references: [id])
+
+  orderDate     DateTime            @default(now())
+  expectedDate  DateTime?
+
+  status        PurchaseOrderStatus @default(DRAFT)
+
+  subtotal      Decimal             @default("0")
+  taxAmount     Decimal             @default("0")
+  totalAmount   Decimal             @default("0")
+
+  remarks       String?
+
+  items         PurchaseOrderItem[]
+
+  createdAt     DateTime            @default(now())
+  updatedAt     temporal.updatedAt()
+
+  @@index([projectId])
+  @@index([vendorId])
+  @@index([status])
+}
+
+
+// =========================
+// PURCHASE ORDER ITEMS
+// =========================
+
+model PurchaseOrderItem {
+  id              Int           @id @default(autoincrement())
+
+  purchaseOrderId Int
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+
+  itemName        String
+  description     String?
+
+  quantity        Decimal       @default("1")
+  unit            String?
+  unitPrice       Decimal       @default("0")
+  totalPrice      Decimal       @default("0")
+
+  createdAt       DateTime      @default(now())
+
+  @@index([purchaseOrderId])
+}
+
+
+// =========================
+// SALES ORDER
+// =========================
+
+model SalesOrder {
+  id               Int              @id @default(autoincrement())
+  salesOrderNumber String           @unique
+  salesOrderCode   String?
+
+  customerId       Int
+  customer         Customer         @relation(fields: [customerId], references: [id])
+
+  quotationId      Int?
+  quotation        Quotation?       @relation(fields: [quotationId], references: [id])
+
+  projectId        Int?
+  project         Project?          @relation(fields: [projectId], references: [id])
+
+  orderDate        DateTime         @default(now())
+  deliveryDate     DateTime?
+
+  status           SalesOrderStatus @default(DRAFT)
+
+  subtotal         Decimal          @default("0")
+  taxAmount        Decimal          @default("0")
+  totalAmount      Decimal          @default("0")
+
+  notes            String?
+
+  // Sales Order Items
+  items            SalesOrderItem[]
+
+  createdAt        DateTime         @default(now())
+  updatedAt        temporal.updatedAt()
+
+  @@index([customerId])
+  @@index([quotationId])
+  @@index([projectId])
+  @@index([status])
+}
+
+
+// =========================
+// SALES ORDER ITEMS
+// =========================
+
+model SalesOrderItem {
+  id            Int        @id @default(autoincrement())
+
+  salesOrderId  Int
+  salesOrder    SalesOrder @relation(fields: [salesOrderId], references: [id])
+
+  itemName      String
+  description   String?
+
+  quantity      Decimal    @default("1")
+  unit          String?
+  unitPrice     Decimal    @default("0")
+  totalPrice    Decimal    @default("0")
+
+  createdAt     DateTime   @default(now())
+
+  @@index([salesOrderId])
+}
+
+
+// =========================
+// QUOTATION
+// =========================
+
+model Quotation {
+  id              Int              @id @default(autoincrement())
+  quotationNumber String           @unique
+
+  customerId      Int
+  customer        Customer         @relation(fields: [customerId], references: [id])
+
+  projectId       Int?
+  project         Project?         @relation(fields: [projectId], references: [id])
+
+  quotationDate   DateTime         @default(now())
+  validUntil      DateTime?
+
+  status          QuotationStatus  @default(DRAFT)
+
+  subtotal        Decimal          @default("0")
+  taxAmount       Decimal          @default("0")
+  totalAmount     Decimal          @default("0")
+
+  notes           String?
+
+  items           QuotationItem[]
+  salesOrders     SalesOrder[]
+
+  createdAt       DateTime         @default(now())
+  updatedAt       temporal.updatedAt()
+
+  @@index([customerId])
+  @@index([projectId])
+  @@index([status])
+}
+
+
+// =========================
+// QUOTATION ITEMS
+// =========================
+
+model QuotationItem {
+  id           Int       @id @default(autoincrement())
+
+  quotationId  Int
+  quotation    Quotation @relation(fields: [quotationId], references: [id])
+
+  itemName     String
+  description  String?
+
+  quantity     Decimal   @default("1")
+  unit         String?
+  unitPrice    Decimal   @default("0")
+  totalPrice   Decimal   @default("0")
+
+  createdAt    DateTime  @default(now())
+
+  @@index([quotationId])
+}
+
+
+// =========================
+// INVOICE
+// =========================
+
+model Invoice {
+  id              Int           @id @default(autoincrement())
+  invoiceNumber   String        @unique
+
+  customerId      Int
+  customer        Customer      @relation(fields: [customerId], references: [id])
+
+  projectId       Int?
+  project         Project?      @relation(fields: [projectId], references: [id])
+
+  invoiceDate     DateTime      @default(now())
+  dueDate         DateTime?
+
+  status          InvoiceStatus @default(DRAFT)
+
+  subtotal        Decimal       @default("0")
+  taxAmount       Decimal       @default("0")
+  totalAmount     Decimal       @default("0")
+  paidAmount      Decimal       @default("0")
+
+  notes           String?
+
+  items           InvoiceItem[]
+  payments        Payment[]
+
+  createdAt       DateTime      @default(now())
+  updatedAt       temporal.updatedAt()
+
+  @@index([customerId])
+  @@index([projectId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+
+// =========================
+// INVOICE ITEMS
+// =========================
+
+model InvoiceItem {
+  id           Int       @id @default(autoincrement())
+
+  invoiceId    Int
+  invoice      Invoice   @relation(fields: [invoiceId], references: [id])
+
+  itemName     String
+  description  String?
+
+  quantity     Decimal   @default("1")
+  unit         String?
+  unitPrice    Decimal   @default("0")
+  totalPrice   Decimal   @default("0")
+
+  createdAt    DateTime  @default(now())
+
+  @@index([invoiceId])
+}
+
+
+// =========================
+// PAYMENTS
+// =========================
+
+model Payment {
+  id              Int           @id @default(autoincrement())
+  paymentNumber   String        @unique
+
+  invoiceId       Int
+  invoice         Invoice       @relation(fields: [invoiceId], references: [id])
+
+  paymentDate     DateTime      @default(now())
+  amount          Decimal       @default("0")
+
+  paymentMethod   PaymentMethod @default(BANK_TRANSFER)
+
+  referenceNumber String?
+  notes           String?
+
+  createdAt       DateTime      @default(now())
+  updatedAt       temporal.updatedAt()
+
+  @@index([invoiceId])
+  @@index([paymentDate])
+  @@index([paymentMethod])
+}
+
+
+// ============================================================
+// PRODUCT / ITEM MASTER
+// ============================================================
+
+model Product {
+  id            Int       @id @default(autoincrement())
+
+  productCode   String    @unique
+  name          String
+  description   String?
+
+  unit          String?
+  unitPrice     Decimal   @default("0")
+
+  isActive      Boolean   @default(true)
+
+  createdAt     DateTime  @default(now())
+  updatedAt     temporal.updatedAt()
+
+  @@index([name])
+  @@index([isActive])
+}
+
+
+// =========================
+// ACTIVITY / AUDIT LOG
+// =========================
+
+model AuditLog {
+  id          Int       @id @default(autoincrement())
+
+  userId      Int?
+  action      String
+  module      String
+  recordId    Int?
+  description String?
+
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+  @@index([module])
+  @@index([createdAt])
+}
