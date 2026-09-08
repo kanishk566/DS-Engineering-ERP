@@ -246,8 +246,8 @@ app.use(
    START SERVER
 ========================= */
 
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(
-    `DS Engineering ERP Backend running on http://localhost:${PORT}`
+    `DS Engineering ERP Backend running on port ${PORT}`
   );
 });

@@ -4,3 +4,4 @@ dist/
 db_dump.bak
 contract-errors.json
 db-init-result.json
+direct-url.txt
