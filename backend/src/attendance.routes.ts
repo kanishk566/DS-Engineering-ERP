@@ -92,180 +92,6 @@ router.get("/", authenticateToken, async (req, res) => {
 });
 
 /* ============================================================
-   MONTHLY ATTENDANCE REPORT
-   GET /api/attendance/monthly/report?month=2026-09
-============================================================ */
-
-router.get(
-  "/monthly/report",
-  authenticateToken,
-  async (req, res) => {
-    try {
-      const month =
-        String(req.query.month ?? "").trim();
-
-      if (!/^\d{4}-\d{2}$/.test(month)) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Invalid month. Please use YYYY-MM.",
-        });
-      }
-
-      const [year, monthNumber] =
-        month.split("-").map(Number);
-
-      /* -------------------------
-         START DATE
-      ------------------------- */
-
-      const startDate =
-        Temporal.Instant.from(
-          `${month}-01T00:00:00Z`
-        );
-
-      /* -------------------------
-         NEXT MONTH
-      ------------------------- */
-
-      const nextMonthDate =
-        new Date(
-          Date.UTC(
-            year,
-            monthNumber,
-            1
-          )
-        );
-
-      const nextMonth =
-        Temporal.Instant.from(
-          nextMonthDate.toISOString()
-        );
-
-      /* -------------------------
-         EMPLOYEES
-      ------------------------- */
-
-      const employees =
-        await db.orm.public.Employee
-          .orderBy(
-            (employee) =>
-              employee.firstName.asc()
-          )
-          .all();
-
-      /* -------------------------
-         ATTENDANCE
-      ------------------------- */
-
-      const attendance =
-        await db.orm.public.Attendance
-          .where({
-            date: {
-              gte: startDate,
-              lt: nextMonth,
-            },
-          } as any)
-          .all();
-
-      /* -------------------------
-         REPORT
-      ------------------------- */
-
-      const report =
-        employees.map((employee) => {
-          const records =
-            attendance.filter(
-              (record) =>
-                record.employeeId ===
-                employee.id
-            );
-
-          const present =
-            records.filter(
-              (record) =>
-                record.status === "present"
-            ).length;
-
-          const absent =
-            records.filter(
-              (record) =>
-                record.status === "absent"
-            ).length;
-
-          const halfDay =
-            records.filter(
-              (record) =>
-                record.status === "half_day"
-            ).length;
-
-          const leave =
-            records.filter(
-              (record) =>
-                record.status === "leave"
-            ).length;
-
-          const totalMarkedDays =
-            records.length;
-
-          const attendancePercentage =
-            totalMarkedDays > 0
-              ? Number(
-                  (
-                    (present /
-                      totalMarkedDays) *
-                    100
-                  ).toFixed(2)
-                )
-              : 0;
-
-          return {
-            employeeId: employee.id,
-            employeeCode:
-              employee.employeeCode,
-
-            employeeName:
-              `${employee.firstName}${
-                employee.lastName
-                  ? ` ${employee.lastName}`
-                  : ""
-              }`,
-
-            present,
-            absent,
-            halfDay,
-            leave,
-
-            totalMarkedDays,
-            attendancePercentage,
-          };
-        });
-
-      return res.json({
-        success: true,
-        month,
-        data: report,
-      });
-    } catch (error) {
-      console.error(
-        "MONTHLY ATTENDANCE ERROR:",
-        error
-      );
-
-      return res.status(500).json({
-        success: false,
-        message:
-          "Failed to generate monthly attendance report",
-        error:
-          error instanceof Error
-            ? error.message
-            : String(error),
-      });
-    }
-  }
-);
-
-/* ============================================================
    GET ATTENDANCE BY ID
    GET /api/attendance/:id
 ============================================================ */
@@ -696,6 +522,178 @@ router.delete("/:id", authenticateToken, async (req, res) => {
   }
 });
 
+/* ============================================================
+   MONTHLY ATTENDANCE REPORT
+   GET /api/attendance/monthly/report?month=2026-09
+============================================================ */
 
+router.get(
+  "/monthly/report",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const month =
+        String(req.query.month ?? "").trim();
+
+      if (!/^\d{4}-\d{2}$/.test(month)) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid month. Please use YYYY-MM.",
+        });
+      }
+
+      const [year, monthNumber] =
+        month.split("-").map(Number);
+
+      /* -------------------------
+         START DATE
+      ------------------------- */
+
+      const startDate =
+        Temporal.Instant.from(
+          `${month}-01T00:00:00Z`
+        );
+
+      /* -------------------------
+         NEXT MONTH
+      ------------------------- */
+
+      const nextMonthDate =
+        new Date(
+          Date.UTC(
+            year,
+            monthNumber,
+            1
+          )
+        );
+
+      const nextMonth =
+        Temporal.Instant.from(
+          nextMonthDate.toISOString()
+        );
+
+      /* -------------------------
+         EMPLOYEES
+      ------------------------- */
+
+      const employees =
+        await db.orm.public.Employee
+          .orderBy(
+            (employee) =>
+              employee.firstName.asc()
+          )
+          .all();
+
+      /* -------------------------
+         ATTENDANCE
+      ------------------------- */
+
+      const attendance =
+        await db.orm.public.Attendance
+          .where((record) =>
+            record.date.gte(startDate)
+          )
+          .where((record) =>
+            record.date.lt(nextMonth)
+          )
+          .all();
+
+      /* -------------------------
+         REPORT
+      ------------------------- */
+
+      const report =
+        employees.map((employee) => {
+          const records =
+            attendance.filter(
+              (record) =>
+                record.employeeId ===
+                employee.id
+            );
+
+          const present =
+            records.filter(
+              (record) =>
+                record.status === "present"
+            ).length;
+
+          const absent =
+            records.filter(
+              (record) =>
+                record.status === "absent"
+            ).length;
+
+          const halfDay =
+            records.filter(
+              (record) =>
+                record.status === "half_day"
+            ).length;
+
+          const leave =
+            records.filter(
+              (record) =>
+                record.status === "leave"
+            ).length;
+
+          const totalMarkedDays =
+            records.length;
+
+          const attendancePercentage =
+            totalMarkedDays > 0
+              ? Number(
+                  (
+                    (present /
+                      totalMarkedDays) *
+                    100
+                  ).toFixed(2)
+                )
+              : 0;
+
+          return {
+            employeeId: employee.id,
+            employeeCode:
+              employee.employeeCode,
+
+            employeeName:
+              `${employee.firstName}${
+                employee.lastName
+                  ? ` ${employee.lastName}`
+                  : ""
+              }`,
+
+            present,
+            absent,
+            halfDay,
+            leave,
+
+            totalMarkedDays,
+            attendancePercentage,
+          };
+        });
+
+      return res.json({
+        success: true,
+        month,
+        data: report,
+      });
+    } catch (error) {
+      console.error(
+        "MONTHLY ATTENDANCE ERROR:",
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+        message:
+          "Failed to generate monthly attendance report",
+        error:
+          error instanceof Error
+            ? error.message
+            : String(error),
+      });
+    }
+  }
+);
 
 export default router;
