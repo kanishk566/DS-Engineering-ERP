@@ -1,22 +1,40 @@
 import { Router } from "express";
 import { db } from "./prisma/db.js";
 import { authenticateToken } from "./auth.middleware.js";
+import "temporal-polyfill/full/global";
+import type { Temporal as TemporalTypes } from "temporal-polyfill";
 
 const router = Router();
 
-// ============================================================
-// GET ALL ATTENDANCE
-// GET /api/attendance
-// Optional:
-//   ?date=2026-09-12
-//   ?employeeId=1
-// ============================================================
+const Temporal = (globalThis as typeof globalThis & {
+  Temporal: typeof TemporalTypes;
+}).Temporal;
+
+/* HELPER */
+function toAttendanceInstant(dateString: string): TemporalTypes.Instant {
+  return Temporal.Instant.from(
+    `${dateString}T00:00:00Z`
+  );
+}
+
+/* ============================================================
+   GET ALL ATTENDANCE
+   GET /api/attendance
+
+   Optional:
+   ?date=2026-09-12
+   ?employeeId=1
+============================================================ */
 
 router.get("/", authenticateToken, async (req, res) => {
   try {
     const { date, employeeId } = req.query;
 
     const filters: Record<string, unknown> = {};
+
+    /* -------------------------
+       EMPLOYEE FILTER
+    ------------------------- */
 
     if (employeeId !== undefined) {
       const id = Number(employeeId);
@@ -31,6 +49,10 @@ router.get("/", authenticateToken, async (req, res) => {
       filters.employeeId = id;
     }
 
+    /* -------------------------
+       DATE FILTER
+    ------------------------- */
+
     if (date !== undefined) {
       const dateString = String(date).trim();
 
@@ -41,7 +63,7 @@ router.get("/", authenticateToken, async (req, res) => {
         });
       }
 
-      filters.date = `${dateString}T00:00:00Z`;
+      filters.date = toAttendanceInstant(dateString);
     }
 
     const attendance =
@@ -69,11 +91,10 @@ router.get("/", authenticateToken, async (req, res) => {
   }
 });
 
-
-// ============================================================
-// GET ATTENDANCE BY ID
-// GET /api/attendance/:id
-// ============================================================
+/* ============================================================
+   GET ATTENDANCE BY ID
+   GET /api/attendance/:id
+============================================================ */
 
 router.get("/:id", authenticateToken, async (req, res) => {
   try {
@@ -116,24 +137,17 @@ router.get("/:id", authenticateToken, async (req, res) => {
   }
 });
 
+/* ============================================================
+   CREATE / MARK ATTENDANCE
+   POST /api/attendance
 
-// ============================================================
-// CREATE / MARK ATTENDANCE
-// POST /api/attendance
-//
-// Body:
-// {
-//   "employeeId": 1,
-//   "date": "2026-09-12",
-//   "status": "present"
-// }
-//
-// Valid status:
-// present
-// absent
-// half_day
-// leave
-// ============================================================
+   Body:
+   {
+     "employeeId": 1,
+     "date": "2026-09-14",
+     "status": "present"
+   }
+============================================================ */
 
 router.post("/", authenticateToken, async (req, res) => {
   try {
@@ -143,9 +157,9 @@ router.post("/", authenticateToken, async (req, res) => {
       status,
     } = req.body;
 
-    // --------------------------------------------------------
-    // EMPLOYEE ID
-    // --------------------------------------------------------
+    /* -------------------------
+       EMPLOYEE ID
+    ------------------------- */
 
     const numericEmployeeId = Number(employeeId);
 
@@ -159,9 +173,9 @@ router.post("/", authenticateToken, async (req, res) => {
       });
     }
 
-    // --------------------------------------------------------
-    // CHECK EMPLOYEE
-    // --------------------------------------------------------
+    /* -------------------------
+       CHECK EMPLOYEE
+    ------------------------- */
 
     const employee =
       await db.orm.public.Employee
@@ -177,9 +191,9 @@ router.post("/", authenticateToken, async (req, res) => {
       });
     }
 
-    // --------------------------------------------------------
-    // DATE
-    // --------------------------------------------------------
+    /* -------------------------
+       DATE
+    ------------------------- */
 
     if (
       date === undefined ||
@@ -202,11 +216,11 @@ router.post("/", authenticateToken, async (req, res) => {
     }
 
     const attendanceDate =
-      `${dateString}T00:00:00Z`;
+      toAttendanceInstant(dateString);
 
-    // --------------------------------------------------------
-    // STATUS
-    // --------------------------------------------------------
+    /* -------------------------
+       STATUS
+    ------------------------- */
 
     const attendanceStatus =
       String(status ?? "").toLowerCase().trim();
@@ -226,10 +240,9 @@ router.post("/", authenticateToken, async (req, res) => {
       });
     }
 
-    // --------------------------------------------------------
-    // CHECK DUPLICATE
-    // One employee can have only one attendance record per day.
-    // --------------------------------------------------------
+    /* -------------------------
+       CHECK DUPLICATE
+    ------------------------- */
 
     const existingAttendance =
       await db.orm.public.Attendance
@@ -248,9 +261,9 @@ router.post("/", authenticateToken, async (req, res) => {
       });
     }
 
-    // --------------------------------------------------------
-    // CREATE ATTENDANCE
-    // --------------------------------------------------------
+    /* -------------------------
+       CREATE ATTENDANCE
+    ------------------------- */
 
     const attendance =
       await db.orm.public.Attendance.create({
@@ -278,11 +291,10 @@ router.post("/", authenticateToken, async (req, res) => {
   }
 });
 
-
-// ============================================================
-// UPDATE ATTENDANCE
-// PUT /api/attendance/:id
-// ============================================================
+/* ============================================================
+   UPDATE ATTENDANCE
+   PUT /api/attendance/:id
+============================================================ */
 
 router.put("/:id", authenticateToken, async (req, res) => {
   try {
@@ -315,9 +327,9 @@ router.put("/:id", authenticateToken, async (req, res) => {
 
     const updateData: Record<string, unknown> = {};
 
-    // --------------------------------------------------------
-    // EMPLOYEE
-    // --------------------------------------------------------
+    /* -------------------------
+       EMPLOYEE
+    ------------------------- */
 
     if (employeeId !== undefined) {
       const numericEmployeeId = Number(employeeId);
@@ -349,9 +361,9 @@ router.put("/:id", authenticateToken, async (req, res) => {
       updateData.employeeId = numericEmployeeId;
     }
 
-    // --------------------------------------------------------
-    // DATE
-    // --------------------------------------------------------
+    /* -------------------------
+       DATE
+    ------------------------- */
 
     if (date !== undefined) {
       const dateString = String(date).trim();
@@ -364,12 +376,12 @@ router.put("/:id", authenticateToken, async (req, res) => {
       }
 
       updateData.date =
-        `${dateString}T00:00:00Z`;
+        toAttendanceInstant(dateString);
     }
 
-    // --------------------------------------------------------
-    // STATUS
-    // --------------------------------------------------------
+    /* -------------------------
+       STATUS
+    ------------------------- */
 
     if (status !== undefined) {
       const attendanceStatus =
@@ -392,47 +404,47 @@ router.put("/:id", authenticateToken, async (req, res) => {
       updateData.status = attendanceStatus;
     }
 
-    // --------------------------------------------------------
-    // DUPLICATE CHECK
-    // --------------------------------------------------------
+    /* -------------------------
+       DUPLICATE CHECK
+    ------------------------- */
 
     if (
-  updateData.employeeId !== undefined ||
-  updateData.date !== undefined
-) {
-  const finalEmployeeId: number =
-    updateData.employeeId !== undefined
-      ? Number(updateData.employeeId)
-      : existingAttendance.employeeId;
+      updateData.employeeId !== undefined ||
+      updateData.date !== undefined
+    ) {
+      const finalEmployeeId: number =
+        updateData.employeeId !== undefined
+          ? Number(updateData.employeeId)
+          : existingAttendance.employeeId;
 
-  const finalDate: string =
-    updateData.date !== undefined
-      ? String(updateData.date)
-      : String(existingAttendance.date);
+      const finalDate =
+        updateData.date !== undefined
+          ? updateData.date
+          : existingAttendance.date;
 
-  const duplicate =
-    await db.orm.public.Attendance
-      .where({
-        employeeId: finalEmployeeId,
-        date: finalDate,
-      })
-      .first();
+      const duplicate =
+        await db.orm.public.Attendance
+          .where({
+            employeeId: finalEmployeeId,
+            date: finalDate,
+          })
+          .first();
 
-  if (
-    duplicate &&
-    duplicate.id !== id
-  ) {
-    return res.status(409).json({
-      success: false,
-      message:
-        "Attendance already exists for this employee on this date",
-    });
-  }
-}
+      if (
+        duplicate &&
+        duplicate.id !== id
+      ) {
+        return res.status(409).json({
+          success: false,
+          message:
+            "Attendance already exists for this employee on this date",
+        });
+      }
+    }
 
-    // --------------------------------------------------------
-    // UPDATE
-    // --------------------------------------------------------
+    /* -------------------------
+       UPDATE
+    ------------------------- */
 
     const updatedAttendance =
       await db.orm.public.Attendance
@@ -458,11 +470,10 @@ router.put("/:id", authenticateToken, async (req, res) => {
   }
 });
 
-
-// ============================================================
-// DELETE ATTENDANCE
-// DELETE /api/attendance/:id
-// ============================================================
+/* ============================================================
+   DELETE ATTENDANCE
+   DELETE /api/attendance/:id
+============================================================ */
 
 router.delete("/:id", authenticateToken, async (req, res) => {
   try {
@@ -511,129 +522,178 @@ router.delete("/:id", authenticateToken, async (req, res) => {
   }
 });
 
+/* ============================================================
+   MONTHLY ATTENDANCE REPORT
+   GET /api/attendance/monthly/report?month=2026-09
+============================================================ */
 
-// ============================================================
-// MONTHLY ATTENDANCE
-// GET /api/attendance/monthly?month=2026-09
-//
-// Returns employee-wise monthly attendance summary.
-// ============================================================
+router.get(
+  "/monthly/report",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const month =
+        String(req.query.month ?? "").trim();
 
-router.get("/monthly/report", authenticateToken, async (req, res) => {
-  try {
-    const month = String(req.query.month ?? "").trim();
+      if (!/^\d{4}-\d{2}$/.test(month)) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid month. Please use YYYY-MM.",
+        });
+      }
 
-    if (!/^\d{4}-\d{2}$/.test(month)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid month. Please use YYYY-MM.",
+      const [year, monthNumber] =
+        month.split("-").map(Number);
+
+      /* -------------------------
+         START DATE
+      ------------------------- */
+
+      const startDate =
+        Temporal.Instant.from(
+          `${month}-01T00:00:00Z`
+        );
+
+      /* -------------------------
+         NEXT MONTH
+      ------------------------- */
+
+      const nextMonthDate =
+        new Date(
+          Date.UTC(
+            year,
+            monthNumber,
+            1
+          )
+        );
+
+      const nextMonth =
+        Temporal.Instant.from(
+          nextMonthDate.toISOString()
+        );
+
+      /* -------------------------
+         EMPLOYEES
+      ------------------------- */
+
+      const employees =
+        await db.orm.public.Employee
+          .orderBy(
+            (employee) =>
+              employee.firstName.asc()
+          )
+          .all();
+
+      /* -------------------------
+         ATTENDANCE
+      ------------------------- */
+
+      const attendance =
+        await db.orm.public.Attendance
+          .where({
+            date: {
+              gte: startDate,
+              lt: nextMonth,
+            },
+          } as any)
+          .all();
+
+      /* -------------------------
+         REPORT
+      ------------------------- */
+
+      const report =
+        employees.map((employee) => {
+          const records =
+            attendance.filter(
+              (record) =>
+                record.employeeId ===
+                employee.id
+            );
+
+          const present =
+            records.filter(
+              (record) =>
+                record.status === "present"
+            ).length;
+
+          const absent =
+            records.filter(
+              (record) =>
+                record.status === "absent"
+            ).length;
+
+          const halfDay =
+            records.filter(
+              (record) =>
+                record.status === "half_day"
+            ).length;
+
+          const leave =
+            records.filter(
+              (record) =>
+                record.status === "leave"
+            ).length;
+
+          const totalMarkedDays =
+            records.length;
+
+          const attendancePercentage =
+            totalMarkedDays > 0
+              ? Number(
+                  (
+                    (present /
+                      totalMarkedDays) *
+                    100
+                  ).toFixed(2)
+                )
+              : 0;
+
+          return {
+            employeeId: employee.id,
+            employeeCode:
+              employee.employeeCode,
+
+            employeeName:
+              `${employee.firstName}${
+                employee.lastName
+                  ? ` ${employee.lastName}`
+                  : ""
+              }`,
+
+            present,
+            absent,
+            halfDay,
+            leave,
+
+            totalMarkedDays,
+            attendancePercentage,
+          };
+        });
+
+      return res.json({
+        success: true,
+        month,
+        data: report,
       });
-    }
-
-    const [year, monthNumber] =
-      month.split("-").map(Number);
-
-    const startDate =
-      `${month}-01T00:00:00Z`;
-
-    const nextMonthDate =
-      new Date(Date.UTC(year, monthNumber, 1));
-
-    const nextMonth =
-      nextMonthDate.toISOString();
-
-    const employees =
-      await db.orm.public.Employee
-        .orderBy((employee) => employee.firstName.asc())
-        .all();
-
-    const attendance =
-      await db.orm.public.Attendance
-        .where({
-          date: {
-            gte: startDate,
-            lt: nextMonth,
-          },
-        } as any)
-        .all();
-
-    const report = employees.map((employee) => {
-      const records = attendance.filter(
-        (record) =>
-          record.employeeId === employee.id
+    } catch (error) {
+      console.error(
+        "MONTHLY ATTENDANCE ERROR:",
+        error
       );
 
-      const present =
-        records.filter(
-          (record) => record.status === "present"
-        ).length;
-
-      const absent =
-        records.filter(
-          (record) => record.status === "absent"
-        ).length;
-
-      const halfDay =
-        records.filter(
-          (record) => record.status === "half_day"
-        ).length;
-
-      const leave =
-        records.filter(
-          (record) => record.status === "leave"
-        ).length;
-
-      const totalMarkedDays =
-        records.length;
-
-      const attendancePercentage =
-        totalMarkedDays > 0
-          ? Number(
-              (
-                (present / totalMarkedDays) *
-                100
-              ).toFixed(2)
-            )
-          : 0;
-
-      return {
-        employeeId: employee.id,
-        employeeCode: employee.employeeCode,
-        employeeName:
-          `${employee.firstName}${employee.lastName ? ` ${employee.lastName}` : ""}`,
-
-        present,
-        absent,
-        halfDay,
-        leave,
-
-        totalMarkedDays,
-        attendancePercentage,
-      };
-    });
-
-    return res.json({
-      success: true,
-      month,
-      data: report,
-    });
-  } catch (error) {
-    console.error(
-      "MONTHLY ATTENDANCE ERROR:",
-      error
-    );
-
-    return res.status(500).json({
-      success: false,
-      message:
-        "Failed to generate monthly attendance report",
-      error:
-        error instanceof Error
-          ? error.message
-          : String(error),
-    });
+      return res.status(500).json({
+        success: false,
+        message:
+          "Failed to generate monthly attendance report",
+        error:
+          error instanceof Error
+            ? error.message
+            : String(error),
+      });
+    }
   }
-});
-
+);
 
 export default router;
