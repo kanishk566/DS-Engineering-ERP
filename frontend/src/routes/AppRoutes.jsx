@@ -19,6 +19,8 @@ import ProtectedRoute from "./ProtectedRoute";
 import Drawing from "../pages/machines/Drawing";
 
 import Employee from "../pages/Employee";
+
+import Attendance from "../pages/attendance/Attendance";
 function AppRoutes() {
   return (
     <Routes>
@@ -128,7 +130,10 @@ function AppRoutes() {
   element={<Employee />}
 />
 
-
+<Route
+  path="/attendance"
+  element={<Attendance />}
+/>
 
         {/* ==================================================
             SETTINGS

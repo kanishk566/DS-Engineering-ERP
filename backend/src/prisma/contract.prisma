@@ -29,6 +29,15 @@ enum EmployeeStatus {
   ON_LEAVE    = "on_leave"
 }
 
+enum AttendanceStatus {
+  @@type("pg/text@1")
+
+  PRESENT     = "present"
+  ABSENT      = "absent"
+  HALF_DAY    = "half_day"
+  LEAVE       = "leave"
+}
+
 enum ProjectStatus {
   @@type("pg/text@1")
 
@@ -119,7 +128,7 @@ enum PaymentMethod {
   @@type("pg/text@1")
 
   CASH          = "cash"
-  BANK_TRANSFER  = "bank_transfer"
+  BANK_TRANSFER = "bank_transfer"
   CHEQUE        = "cheque"
   UPI           = "upi"
   CARD          = "card"
@@ -169,17 +178,42 @@ model Employee {
 
   projectMembers   ProjectMember[]
   assignedTasks    ProjectTask[]
-  uploadedDrawings Drawing[] @relation("DrawingUploadedBy")
+  uploadedDrawings Drawing[]       @relation("DrawingUploadedBy")
   drawingRevisions DrawingRevision[]
 
-  reviewedDrawings Drawing[] @relation("DrawingReviewedBy")
-  approvedDrawings Drawing[] @relation("DrawingApprovedBy")
+  reviewedDrawings Drawing[]       @relation("DrawingReviewedBy")
+  approvedDrawings Drawing[]       @relation("DrawingApprovedBy")
+
+  attendanceRecords Attendance[]
 
   createdAt        DateTime        @default(now())
   updatedAt        temporal.updatedAt()
 
   @@index([status])
   @@index([department])
+}
+
+
+// =========================
+// ATTENDANCE
+// =========================
+
+model Attendance {
+  id          Int              @id @default(autoincrement())
+
+  employeeId  Int
+  employee    Employee         @relation(fields: [employeeId], references: [id])
+
+  date        DateTime
+  status      AttendanceStatus
+
+  createdAt   DateTime         @default(now())
+  updatedAt   temporal.updatedAt()
+
+  @@unique([employeeId, date])
+  @@index([employeeId])
+  @@index([date])
+  @@index([status])
 }
 
 
@@ -406,10 +440,10 @@ model Machine {
 // =========================
 
 model DrawingRevision {
-  id                Int           @id @default(autoincrement())
+  id                Int                @id @default(autoincrement())
 
   drawingId         Int
-  drawing           Drawing       @relation(fields: [drawingId], references: [id])
+  drawing           Drawing            @relation(fields: [drawingId], references: [id])
 
   revision          String
 
@@ -421,11 +455,11 @@ model DrawingRevision {
   changeDescription String?
 
   uploadedById      Int?
-  uploadedBy        Employee?     @relation(fields: [uploadedById], references: [id])
+  uploadedBy        Employee?          @relation(fields: [uploadedById], references: [id])
 
-  revisionDate      DateTime      @default(now())
+  revisionDate      DateTime           @default(now())
 
-  createdAt         DateTime      @default(now())
+  createdAt         DateTime           @default(now())
 
   @@unique([drawingId, revision])
   @@index([drawingId])
@@ -434,14 +468,13 @@ model DrawingRevision {
 }
 
 
-
 // =========================
 // VENDOR
 // =========================
 
 model Vendor {
-  id             Int           @id @default(autoincrement())
-  vendorCode     String        @unique
+  id             Int       @id @default(autoincrement())
+  vendorCode     String    @unique
   name           String
   contactPerson  String?
   email          String?
@@ -451,7 +484,7 @@ model Vendor {
 
   purchaseOrders PurchaseOrder[]
 
-  createdAt      DateTime      @default(now())
+  createdAt      DateTime  @default(now())
   updatedAt      temporal.updatedAt()
 
   @@index([name])
@@ -607,13 +640,13 @@ model Quotation {
   taxAmount       Decimal          @default("0")
   totalAmount     Decimal          @default("0")
 
-  notes           String?
+  notes            String?
 
-  items           QuotationItem[]
-  salesOrders     SalesOrder[]
+  items            QuotationItem[]
+  salesOrders      SalesOrder[]
 
-  createdAt       DateTime         @default(now())
-  updatedAt       temporal.updatedAt()
+  createdAt        DateTime         @default(now())
+  updatedAt        temporal.updatedAt()
 
   @@index([customerId])
   @@index([projectId])
@@ -689,20 +722,20 @@ model Invoice {
 // =========================
 
 model InvoiceItem {
-  id           Int       @id @default(autoincrement())
+  id            Int        @id @default(autoincrement())
 
-  invoiceId    Int
-  invoice      Invoice   @relation(fields: [invoiceId], references: [id])
+  invoiceId     Int
+  invoice       Invoice    @relation(fields: [invoiceId], references: [id])
 
-  itemName     String
-  description  String?
+  itemName      String
+  description   String?
 
-  quantity     Decimal   @default("1")
-  unit         String?
-  unitPrice    Decimal   @default("0")
-  totalPrice   Decimal   @default("0")
+  quantity      Decimal    @default("1")
+  unit          String?
+  unitPrice     Decimal    @default("0")
+  totalPrice    Decimal    @default("0")
 
-  createdAt    DateTime  @default(now())
+  createdAt     DateTime   @default(now())
 
   @@index([invoiceId])
 }

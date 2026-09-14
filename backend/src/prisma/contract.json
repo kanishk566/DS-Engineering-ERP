@@ -4,6 +4,10 @@
   "target": "postgres",
   "profileHash": "3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2",
   "roots": {
+    "attendance": {
+      "model": "Attendance",
+      "namespace": "public"
+    },
     "auditLog": {
       "model": "AuditLog",
       "namespace": "public"
@@ -93,6 +97,27 @@
     "namespaces": {
       "public": {
         "enum": {
+          "AttendanceStatus": {
+            "codecId": "pg/text@1",
+            "members": [
+              {
+                "name": "PRESENT",
+                "value": "present"
+              },
+              {
+                "name": "ABSENT",
+                "value": "absent"
+              },
+              {
+                "name": "HALF_DAY",
+                "value": "half_day"
+              },
+              {
+                "name": "LEAVE",
+                "value": "leave"
+              }
+            ]
+          },
           "DrawingFileType": {
             "codecId": "pg/text@1",
             "members": [
@@ -378,6 +403,99 @@
           }
         },
         "models": {
+          "Attendance": {
+            "fields": {
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "date": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "employeeId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "status": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                },
+                "valueSet": {
+                  "entityKind": "enum",
+                  "entityName": "AttendanceStatus",
+                  "namespaceId": "public",
+                  "plane": "domain"
+                }
+              },
+              "updatedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "employee": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "employeeId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Employee",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "date": {
+                  "column": "date"
+                },
+                "employeeId": {
+                  "column": "employeeId"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "status": {
+                  "column": "status"
+                },
+                "updatedAt": {
+                  "column": "updatedAt"
+                }
+              },
+              "namespaceId": "public",
+              "table": "attendance"
+            }
+          },
           "AuditLog": {
             "fields": {
               "action": {
@@ -1261,6 +1379,21 @@
                 },
                 "to": {
                   "model": "ProjectTask",
+                  "namespace": "public"
+                }
+              },
+              "attendanceRecords": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "employeeId"
+                  ]
+                },
+                "to": {
+                  "model": "Attendance",
                   "namespace": "public"
                 }
               },
@@ -3849,6 +3982,118 @@
       "public": {
         "entries": {
           "table": {
+            "attendance": {
+              "checks": [
+                {
+                  "expression": "\"status\" IN ('present', 'absent', 'half_day', 'leave')",
+                  "name": "attendance_status_check_b7f0cb9e",
+                  "prefix": "attendance_status_check"
+                }
+              ],
+              "columns": {
+                "createdAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "date": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "employeeId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "expression": "autoincrement()",
+                    "kind": "function"
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "status": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false,
+                  "valueSet": {
+                    "entityKind": "valueSet",
+                    "entityName": "AttendanceStatus",
+                    "namespaceId": "public",
+                    "plane": "storage"
+                  }
+                },
+                "updatedAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "source": {
+                    "columns": [
+                      "employeeId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "attendance"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "employee"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "date"
+                  ],
+                  "name": "attendance_date_idx_b4ca319c",
+                  "prefix": "attendance_date_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "employeeId"
+                  ],
+                  "name": "attendance_employeeId_idx_087dd4a6",
+                  "prefix": "attendance_employeeId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "status"
+                  ],
+                  "name": "attendance_status_idx_e98638ab",
+                  "prefix": "attendance_status_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "employeeId",
+                    "date"
+                  ]
+                }
+              ]
+            },
             "auditLog": {
               "columns": {
                 "action": {
@@ -6783,6 +7028,15 @@
             }
           },
           "valueSet": {
+            "AttendanceStatus": {
+              "kind": "valueSet",
+              "values": [
+                "present",
+                "absent",
+                "half_day",
+                "leave"
+              ]
+            },
             "DrawingFileType": {
               "kind": "valueSet",
               "values": [
@@ -6901,12 +7155,27 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "9095fc35e2f214d53cca1ba1cb9d50eff2e7476f570bcad94db551dfa7e9f6f9"
+    "storageHash": "2cd923eb7e3474ed11649ab50e9513aca55790e062ec765ccc146135272d966e"
   },
   "execution": {
-    "executionHash": "ba8ee4cd2aa3da7ad6f96fd8728a173181603a10b3ef7783b89b20dbf767a843",
+    "executionHash": "8a01b3028ed50d3478aa3f8e4296c9b68e654d43b8dc3070753830ddf18d2d00",
     "mutations": {
       "defaults": [
+        {
+          "onCreate": {
+            "id": "instantNow",
+            "kind": "generator"
+          },
+          "onUpdate": {
+            "id": "instantNow",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "updatedAt",
+            "namespace": "public",
+            "table": "attendance"
+          }
+        },
         {
           "onCreate": {
             "id": "instantNow",

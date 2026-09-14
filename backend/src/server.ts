@@ -34,6 +34,8 @@ import drawingRoutes from "./drawing.routes.js";
 
 
 import employeeRoutes from "./employee.routes.js";
+
+import attendanceRoutes from "./attendance.routes.js";
 const app = express();
 
 const PORT = Number(process.env.PORT) || 5000;
@@ -204,6 +206,12 @@ app.use(
 app.use(
   "/api/employees",
   employeeRoutes,
+);
+
+
+app.use(
+  "/api/attendance",
+  attendanceRoutes,
 );
 
 

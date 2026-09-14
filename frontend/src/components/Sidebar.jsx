@@ -329,6 +329,25 @@ function Sidebar({ isOpen, onClose }) {
         </NavLink>
 
 
+        {/* ATTENDANCE */}
+
+<NavLink
+  to="/attendance"
+  onClick={handleNavClick}
+  className={({ isActive }) =>
+    `nav-item ${isActive ? "active" : ""}`
+  }
+>
+  <span className="nav-icon">
+    ✓
+  </span>
+
+  <span>
+    Attendance
+  </span>
+</NavLink>
+
+
         {/* MACHINES */}
 
         <NavLink
