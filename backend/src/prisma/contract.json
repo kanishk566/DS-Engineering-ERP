@@ -243,6 +243,39 @@
               }
             ]
           },
+          "ProjectStage": {
+            "codecId": "pg/text@1",
+            "members": [
+              {
+                "name": "DRAWING",
+                "value": "drawing"
+              },
+              {
+                "name": "MATERIAL_PROCUREMENT",
+                "value": "material_procurement"
+              },
+              {
+                "name": "FABRICATION",
+                "value": "fabrication"
+              },
+              {
+                "name": "WELDING",
+                "value": "welding"
+              },
+              {
+                "name": "MACHINE",
+                "value": "machine"
+              },
+              {
+                "name": "PRINTING",
+                "value": "printing"
+              },
+              {
+                "name": "FINISH",
+                "value": "finish"
+              }
+            ]
+          },
           "ProjectStatus": {
             "codecId": "pg/text@1",
             "members": [
@@ -2239,6 +2272,13 @@
                   "kind": "scalar"
                 }
               },
+              "completedAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
               "createdAt": {
                 "nullable": false,
                 "type": {
@@ -2274,6 +2314,13 @@
                   "kind": "scalar"
                 }
               },
+              "isCompleted": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
               "name": {
                 "nullable": false,
                 "type": {
@@ -2286,6 +2333,19 @@
                 "type": {
                   "codecId": "pg/text@1",
                   "kind": "scalar"
+                }
+              },
+              "stage": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                },
+                "valueSet": {
+                  "entityKind": "enum",
+                  "entityName": "ProjectStage",
+                  "namespaceId": "public",
+                  "plane": "domain"
                 }
               },
               "startDate": {
@@ -2458,6 +2518,9 @@
                 "actualEndDate": {
                   "column": "actualEndDate"
                 },
+                "completedAt": {
+                  "column": "completedAt"
+                },
                 "createdAt": {
                   "column": "createdAt"
                 },
@@ -2473,11 +2536,17 @@
                 "id": {
                   "column": "id"
                 },
+                "isCompleted": {
+                  "column": "isCompleted"
+                },
                 "name": {
                   "column": "name"
                 },
                 "projectCode": {
                   "column": "projectCode"
+                },
+                "stage": {
+                  "column": "stage"
                 },
                 "startDate": {
                   "column": "startDate"
@@ -5570,6 +5639,11 @@
             "project": {
               "checks": [
                 {
+                  "expression": "\"stage\" IN ('drawing', 'material_procurement', 'fabrication', 'welding', 'machine', 'printing', 'finish')",
+                  "name": "project_stage_check_5d479a48",
+                  "prefix": "project_stage_check"
+                },
+                {
                   "expression": "\"status\" IN ('planning', 'in_progress', 'on_hold', 'completed', 'cancelled')",
                   "name": "project_status_check_fc3278a8",
                   "prefix": "project_status_check"
@@ -5577,6 +5651,11 @@
               ],
               "columns": {
                 "actualEndDate": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
+                "completedAt": {
                   "codecId": "pg/timestamptz-temporal@1",
                   "nativeType": "timestamptz",
                   "nullable": true
@@ -5614,6 +5693,15 @@
                   "nativeType": "int4",
                   "nullable": false
                 },
+                "isCompleted": {
+                  "codecId": "pg/bool@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": false
+                  },
+                  "nativeType": "bool",
+                  "nullable": false
+                },
                 "name": {
                   "codecId": "pg/text@1",
                   "nativeType": "text",
@@ -5623,6 +5711,21 @@
                   "codecId": "pg/text@1",
                   "nativeType": "text",
                   "nullable": false
+                },
+                "stage": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "drawing"
+                  },
+                  "nativeType": "text",
+                  "nullable": false,
+                  "valueSet": {
+                    "entityKind": "valueSet",
+                    "entityName": "ProjectStage",
+                    "namespaceId": "public",
+                    "plane": "storage"
+                  }
                 },
                 "startDate": {
                   "codecId": "pg/timestamptz-temporal@1",
@@ -5675,6 +5778,14 @@
                   ],
                   "name": "project_customerId_idx_b2a8a46c",
                   "prefix": "project_customerId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "isCompleted"
+                  ],
+                  "name": "project_isCompleted_idx_8da1da7d",
+                  "prefix": "project_isCompleted_idx",
                   "unique": false
                 },
                 {
@@ -7087,6 +7198,18 @@
                 "other"
               ]
             },
+            "ProjectStage": {
+              "kind": "valueSet",
+              "values": [
+                "drawing",
+                "material_procurement",
+                "fabrication",
+                "welding",
+                "machine",
+                "printing",
+                "finish"
+              ]
+            },
             "ProjectStatus": {
               "kind": "valueSet",
               "values": [
@@ -7155,7 +7278,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "2cd923eb7e3474ed11649ab50e9513aca55790e062ec765ccc146135272d966e"
+    "storageHash": "c0772cba58571af10bae5a5b59ba11fe2919907a7a51be9c65c6cd9bda43e1a1"
   },
   "execution": {
     "executionHash": "8a01b3028ed50d3478aa3f8e4296c9b68e654d43b8dc3070753830ddf18d2d00",

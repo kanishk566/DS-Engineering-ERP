@@ -33,7 +33,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'2cd923eb7e3474ed11649ab50e9513aca55790e062ec765ccc146135272d966e'>;
+  StorageHashBase<'c0772cba58571af10bae5a5b59ba11fe2919907a7a51be9c65c6cd9bda43e1a1'>;
 export type ExecutionHash =
   ExecutionHashBase<'8a01b3028ed50d3478aa3f8e4296c9b68e654d43b8dc3070753830ddf18d2d00'>;
 export type ProfileHash =
@@ -395,6 +395,16 @@ export type FieldOutputTypes = {
       readonly expectedEndDate: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
       readonly actualEndDate: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
       readonly status: 'planning' | 'in_progress' | 'on_hold' | 'completed' | 'cancelled';
+      readonly stage:
+        | 'drawing'
+        | 'material_procurement'
+        | 'fabrication'
+        | 'welding'
+        | 'machine'
+        | 'printing'
+        | 'finish';
+      readonly isCompleted: CodecTypes['pg/bool@1']['output'];
+      readonly completedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     };
@@ -680,6 +690,16 @@ export type FieldInputTypes = {
       readonly expectedEndDate: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
       readonly actualEndDate: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
       readonly status: 'planning' | 'in_progress' | 'on_hold' | 'completed' | 'cancelled';
+      readonly stage:
+        | 'drawing'
+        | 'material_procurement'
+        | 'fabrication'
+        | 'welding'
+        | 'machine'
+        | 'printing'
+        | 'finish';
+      readonly isCompleted: CodecTypes['pg/bool@1']['input'];
+      readonly completedAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
     };
@@ -957,13 +977,23 @@ export type StorageColumnTypes = {
     };
     readonly project: {
       readonly actualEndDate: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+      readonly completedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly customerId: CodecTypes['pg/int4@1']['output'] | null;
       readonly description: CodecTypes['pg/text@1']['output'] | null;
       readonly expectedEndDate: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
       readonly id: CodecTypes['pg/int4@1']['output'];
+      readonly isCompleted: CodecTypes['pg/bool@1']['output'];
       readonly name: CodecTypes['pg/text@1']['output'];
       readonly projectCode: CodecTypes['pg/text@1']['output'];
+      readonly stage:
+        | 'drawing'
+        | 'material_procurement'
+        | 'fabrication'
+        | 'welding'
+        | 'machine'
+        | 'printing'
+        | 'finish';
       readonly startDate: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
       readonly status: 'planning' | 'in_progress' | 'on_hold' | 'completed' | 'cancelled';
       readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
@@ -1242,13 +1272,23 @@ export type StorageColumnInputTypes = {
     };
     readonly project: {
       readonly actualEndDate: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
+      readonly completedAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly customerId: CodecTypes['pg/int4@1']['input'] | null;
       readonly description: CodecTypes['pg/text@1']['input'] | null;
       readonly expectedEndDate: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
       readonly id: CodecTypes['pg/int4@1']['input'];
+      readonly isCompleted: CodecTypes['pg/bool@1']['input'];
       readonly name: CodecTypes['pg/text@1']['input'];
       readonly projectCode: CodecTypes['pg/text@1']['input'];
+      readonly stage:
+        | 'drawing'
+        | 'material_procurement'
+        | 'fabrication'
+        | 'welding'
+        | 'machine'
+        | 'printing'
+        | 'finish';
       readonly startDate: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
       readonly status: 'planning' | 'in_progress' | 'on_hold' | 'completed' | 'cancelled';
       readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
@@ -2678,6 +2718,29 @@ type ContractBase = Omit<
                     readonly value: DefaultLiteralValue<'pg/text@1', 'planning'>;
                   };
                 };
+                readonly stage: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/text@1', 'drawing'>;
+                  };
+                };
+                readonly isCompleted: {
+                  readonly nativeType: 'bool';
+                  readonly codecId: 'pg/bool@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/bool@1', false>;
+                  };
+                };
+                readonly completedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: true;
+                };
                 readonly createdAt: {
                   readonly nativeType: 'timestamptz';
                   readonly codecId: 'pg/timestamptz-temporal@1';
@@ -2703,6 +2766,12 @@ type ContractBase = Omit<
                   readonly name: 'project_customerId_idx_b2a8a46c';
                   readonly prefix: 'project_customerId_idx';
                   readonly columns: readonly ['customerId'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'project_isCompleted_idx_8da1da7d';
+                  readonly prefix: 'project_isCompleted_idx';
+                  readonly columns: readonly ['isCompleted'];
                   readonly unique: false;
                 },
               ];
@@ -3809,6 +3878,18 @@ type ContractBase = Omit<
             readonly PaymentMethod: {
               readonly kind: 'valueSet';
               readonly values: readonly ['cash', 'bank_transfer', 'cheque', 'upi', 'card', 'other'];
+            };
+            readonly ProjectStage: {
+              readonly kind: 'valueSet';
+              readonly values: readonly [
+                'drawing',
+                'material_procurement',
+                'fabrication',
+                'welding',
+                'machine',
+                'printing',
+                'finish',
+              ];
             };
             readonly ProjectStatus: {
               readonly kind: 'valueSet';
@@ -5110,6 +5191,21 @@ type ContractBase = Omit<
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
+              readonly stage: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly isCompleted: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/bool@1' };
+              };
+              readonly completedAt: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
               readonly createdAt: {
                 readonly nullable: false;
                 readonly type: {
@@ -5239,6 +5335,9 @@ type ContractBase = Omit<
                 readonly expectedEndDate: { readonly column: 'expectedEndDate' };
                 readonly actualEndDate: { readonly column: 'actualEndDate' };
                 readonly status: { readonly column: 'status' };
+                readonly stage: { readonly column: 'stage' };
+                readonly isCompleted: { readonly column: 'isCompleted' };
+                readonly completedAt: { readonly column: 'completedAt' };
                 readonly createdAt: { readonly column: 'createdAt' };
                 readonly updatedAt: { readonly column: 'updatedAt' };
               };
@@ -6213,6 +6312,18 @@ type ContractBase = Omit<
               { readonly name: 'ON_HOLD'; readonly value: 'on_hold' },
               { readonly name: 'COMPLETED'; readonly value: 'completed' },
               { readonly name: 'CANCELLED'; readonly value: 'cancelled' },
+            ];
+          };
+          readonly ProjectStage: {
+            readonly codecId: 'pg/text@1';
+            readonly members: readonly [
+              { readonly name: 'DRAWING'; readonly value: 'drawing' },
+              { readonly name: 'MATERIAL_PROCUREMENT'; readonly value: 'material_procurement' },
+              { readonly name: 'FABRICATION'; readonly value: 'fabrication' },
+              { readonly name: 'WELDING'; readonly value: 'welding' },
+              { readonly name: 'MACHINE'; readonly value: 'machine' },
+              { readonly name: 'PRINTING'; readonly value: 'printing' },
+              { readonly name: 'FINISH'; readonly value: 'finish' },
             ];
           };
           readonly TaskStatus: {

@@ -48,6 +48,18 @@ enum ProjectStatus {
   CANCELLED   = "cancelled"
 }
 
+enum ProjectStage {
+  @@type("pg/text@1")
+
+  DRAWING              = "drawing"
+  MATERIAL_PROCUREMENT = "material_procurement"
+  FABRICATION          = "fabrication"
+  WELDING              = "welding"
+  MACHINE              = "machine"
+  PRINTING             = "printing"
+  FINISH               = "finish"
+}
+
 enum TaskStatus {
   @@type("pg/text@1")
 
@@ -260,7 +272,15 @@ model Project {
   expectedEndDate DateTime?
   actualEndDate   DateTime?
 
-  status          ProjectStatus   @default(PLANNING)
+ // Legacy status retained for existing project records.
+ status ProjectStatus @default(PLANNING)
+
+ // Manufacturing workflow stage.
+ stage ProjectStage @default(DRAWING)
+
+ // Final project completion record.
+ isCompleted Boolean @default(false)
+ completedAt DateTime?
 
   projectMembers  ProjectMember[]
   tasks           ProjectTask[]
@@ -276,6 +296,7 @@ model Project {
 
   @@index([status])
   @@index([customerId])
+  @@index([isCompleted])
 }
 
 

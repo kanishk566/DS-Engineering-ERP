@@ -50,6 +50,17 @@ const validStatuses = [
 ];
 
 
+const validStages = [
+  "drawing",
+  "material_procurement",
+  "fabrication",
+  "welding",
+  "machine",
+  "printing",
+  "finish",
+];
+
+
 // ============================================================
 // GET ALL PROJECTS
 // GET /api/projects
@@ -82,6 +93,50 @@ router.get(
       return res.status(500).json({
         success: false,
         message: "Failed to fetch projects",
+        error:
+          error instanceof Error
+            ? error.message
+            : String(error),
+      });
+    }
+  },
+);
+
+
+
+// ============================================================
+// GET COMPLETED PROJECTS
+// GET /api/projects/completed
+// ============================================================
+
+router.get(
+  "/completed",
+  authenticateToken,
+  async (_req, res) => {
+    try {
+      const projects =
+        await db.orm.public.Project
+          .where({ isCompleted: true })
+          .orderBy(
+            (project) =>
+              project.completedAt.desc(),
+          )
+          .all();
+
+      return res.json({
+        success: true,
+        count: projects.length,
+        data: projects,
+      });
+    } catch (error) {
+      console.error(
+        "GET COMPLETED PROJECTS ERROR:",
+        error,
+      );
+
+      return res.status(500).json({
+        success: false,
+        message: "Failed to fetch completed projects",
         error:
           error instanceof Error
             ? error.message
@@ -168,6 +223,7 @@ router.post(
         expectedEndDate,
         actualEndDate,
         status,
+        stage,
       } = req.body;
 
 
@@ -248,13 +304,12 @@ router.post(
 
 
       // STATUS
-
-      const projectStatus =
-        status === undefined ||
-        status === null ||
-        status === ""
-          ? "planning"
-          : String(status).toLowerCase();
+const projectStatus =
+  status === undefined ||
+  status === null ||
+  status === ""
+    ? "planning"
+    : String(status).toLowerCase();
 
       if (
         !validStatuses.includes(
@@ -263,10 +318,27 @@ router.post(
       ) {
         return res.status(400).json({
           success: false,
-          message:
-            "Invalid project status. Valid values: planning, in_progress, on_hold, completed, cancelled",
+         message:
+  "Invalid project status. Valid values: planning, in_progress, on_hold, completed, cancelled",
         });
       }
+
+
+
+      const projectStage =
+  stage === undefined ||
+  stage === null ||
+  stage === ""
+    ? "drawing"
+    : String(stage).toLowerCase();
+
+if (!validStages.includes(projectStage)) {
+  return res.status(400).json({
+    success: false,
+    message:
+      "Invalid project stage. Valid values: drawing, material_procurement, fabrication, welding, machine, printing, finish",
+  });
+}
 
 
       // DATES
@@ -373,6 +445,9 @@ router.post(
 
           status:
             projectStatus as any,
+
+          stage:
+            projectStage as any,
         });
 
 
@@ -452,6 +527,7 @@ router.put(
         expectedEndDate,
         actualEndDate,
         status,
+        stage,
       } = req.body;
 
 
@@ -553,6 +629,35 @@ router.put(
             success: false,
             message:
               "Invalid project status. Valid values: planning, in_progress, on_hold, completed, cancelled",
+          });
+        }
+      }
+
+      // STAGE
+
+      let projectStage:
+        | string
+        | undefined;
+
+      if (
+        stage !== undefined
+      ) {
+        projectStage =
+          stage === null ||
+          stage === ""
+            ? undefined
+            : String(stage).toLowerCase();
+
+        if (
+          projectStage !== undefined &&
+          !validStages.includes(
+            projectStage,
+          )
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Invalid project stage. Valid values: drawing, material_procurement, fabrication, welding, machine, printing, finish",
           });
         }
       }
@@ -682,6 +787,13 @@ router.put(
           projectStatus;
       }
 
+      if (
+        projectStage !== undefined
+      ) {
+        updateData.stage =
+          projectStage;
+      }
+
 
       // DATE ORDER VALIDATION
 
@@ -760,6 +872,94 @@ router.put(
 );
 
 
+
+// ============================================================
+// MARK PROJECT COMPLETE
+// POST /api/projects/:id/complete
+// ============================================================
+
+router.post(
+  "/:id/complete",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+
+      if (
+        !Number.isInteger(id) ||
+        id <= 0
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid project ID",
+        });
+      }
+
+      const existingProject =
+        await db.orm.public.Project
+          .where({ id })
+          .first();
+
+      if (!existingProject) {
+        return res.status(404).json({
+          success: false,
+          message: "Project not found",
+        });
+      }
+
+      if (existingProject.isCompleted) {
+        return res.status(409).json({
+          success: false,
+          message: "Project is already completed",
+          data: existingProject,
+        });
+      }
+
+      // A project must reach the final manufacturing stage
+      // before it can be manually marked as complete.
+      if (existingProject.stage !== "finish") {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Project can only be marked complete after reaching FN — Finish.",
+        });
+      }
+
+      const completedAt =
+        Temporal.Now.instant();
+
+      const completedProject =
+        await db.orm.public.Project
+          .where({ id })
+          .update({
+            isCompleted: true,
+            completedAt,
+          } as any);
+
+      return res.json({
+        success: true,
+        message: "Project marked as completed successfully",
+        data: completedProject,
+      });
+    } catch (error) {
+      console.error(
+        "MARK PROJECT COMPLETE ERROR:",
+        error,
+      );
+
+      return res.status(500).json({
+        success: false,
+        message: "Failed to mark project as completed",
+        error:
+          error instanceof Error
+            ? error.message
+            : String(error),
+      });
+    }
+  },
+);
+
+
 // ============================================================
 // DELETE PROJECT
 // DELETE /api/projects/:id
@@ -811,6 +1011,7 @@ router.delete(
 
 
       // DELETE PROJECT
+      
 
       const deletedProject =
         await db.orm.public.Project
