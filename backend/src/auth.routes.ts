@@ -351,7 +351,7 @@ router.post(
     try {
       const user = res.locals.user;
 
-      const userId = Number(user?.id);
+      const userId = Number(user?.userId);
 
       const {
         currentPassword,
